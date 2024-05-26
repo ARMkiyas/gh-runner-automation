@@ -4,16 +4,14 @@ terraform {
       source = "hashicorp/azurerm"
     }
 
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-    }
+
   }
-  backend "azurerm" {
-      resource_group_name  = "tfstate"
-      storage_account_name = "tfstate31858"
-      container_name       = "tfstate"
-      key                  = "terraform.tfstate"
-  }
+  # backend "azurerm" {
+  #     resource_group_name  = "tfstate"
+  #     storage_account_name = "tfstate31858"
+  #     container_name       = "tfstate"
+  #     key                  = "terraform.tfstate"
+  # }
 }
 
 provider "azurerm" {
@@ -28,24 +26,29 @@ data "azurerm_client_config" "current" {
 }
 
 resource "azurerm_resource_group" "rg" {
+  count    = var.create_resource_group ? 1 : 0
   name     = var.rg_name
   location = var.location
 }
 resource "azurerm_virtual_network" "vnet" {
-  depends_on = [ azurerm_resource_group.rg ]
+  count               = var.create_vnet ? 1 : 0
+  depends_on          = [azurerm_resource_group.rg]
   name                = var.vnet_name
   address_space       = ["10.240.10.0/24"]
   resource_group_name = var.rg_name
-  location = var.location
+  location            = var.location
 }
+
+
 
 module "aci" {
   depends_on = [azurerm_resource_group.rg]
-  source = "./modules/aci"
-  
-  gh_pat = var.gh_pat
-  gh_repo_url = var.gh_repo_url
-  resourceGroupName = azurerm_resource_group.rg.name
-  vnetName = azurerm_virtual_network.vnet.name
+  source     = "./modules/aci"
+
+  gh_pat            = var.gh_pat
+  gh_repo_url       = var.gh_repo_url
+  resourceGroupName = var.rg_name
+  vnetName          = var.vnet_name
+
 }
 
